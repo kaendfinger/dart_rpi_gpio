@@ -1,7 +1,7 @@
 /*
  * wiringPi:
- *	Arduino compatable (ish) Wiring library for the Raspberry Pi
- *	Copyright (c) 2012 Gordon Henderson
+ *	Arduino look-a-like Wiring library for the Raspberry Pi
+ *	Copyright (c) 2012-2015 Gordon Henderson
  *	Additional code for pwmSetClock by Chris Hall <chris@kchall.plus.com>
  *
  *	Thanks to code samples from Gert Jan van Loo and the
@@ -131,7 +131,7 @@ struct wiringPiNodeStruct *wiringPiNodes = NULL ;
 //	Taken from Gert/Doms code. Some of this is not in the manual
 //	that I can find )-:
 
-#define BCM2708_PERI_BASE	                     0x20000000
+static volatile unsigned int	 BCM2708_PERI_BASE = 0x20000000 ;	// Variable for Pi2
 #define GPIO_PADS		(BCM2708_PERI_BASE + 0x00100000)
 #define CLOCK_BASE		(BCM2708_PERI_BASE + 0x00101000)
 #define GPIO_BASE		(BCM2708_PERI_BASE + 0x00200000)
@@ -203,7 +203,9 @@ static volatile uint32_t *timerIrqRaw ;
 //	and PI_VERSION_X defines in wiringPi.h
 //	Only intended for the gpio command - use at your own risk!
 
-const char *piModelNames [6] =
+static int piModel2 = FALSE ;
+
+const char *piModelNames [7] =
 {
   "Unknown",
   "Model A",
@@ -211,6 +213,7 @@ const char *piModelNames [6] =
   "Model B+",
   "Compute Module",
   "Model A+",
+  "Model 2",	// Quad Core
 } ;
 
 const char *piRevisionNames [5] =
@@ -222,12 +225,13 @@ const char *piRevisionNames [5] =
   "2",
 } ;
 
-const char *piMakerNames [4] =
+const char *piMakerNames [5] =
 {
   "Unknown",
   "Egoman",
   "Sony",
   "Qusda",
+  "MBest",
 } ;
 
 
@@ -603,6 +607,7 @@ int wiringPiFailure (int fatal, const char *message, ...)
  *
  *	Revision 1 really means the early Model B's.
  *	Revision 2 is everything else - it covers the B, B+ and CM.
+ *		... and the Pi 2 - which is a B+ ++  ...
  *
  *	Seems there are some boards with 0000 in them (mistake in manufacture)
  *	So the distinction between boards that I can see is:
@@ -622,6 +627,10 @@ int wiringPiFailure (int fatal, const char *message, ...)
  *	0010 - Model B+, Rev 1.2, 512MB, Sony
  *	0011 - Pi CM,    Rev 1.2, 512MB, Sony
  *	0012 - Model A+  Rev 1.2, 256MB, Sony
+ *	0014 - Pi CM,    Rev 1.1, 512MB, Sony (Actual Revision might be different)
+ *
+ *	For the Pi 2:
+ *	0010 - Model 2, Rev 1.1, Quad Core, 1GB, Sony
  *
  *	A small thorn is the olde style overvolting - that will add in
  *		1000000
@@ -630,6 +639,7 @@ int wiringPiFailure (int fatal, const char *message, ...)
  *	last digit, then it's 1, therefore it'll default to not 2 or 3 for a
  *	Rev 1, so will appear as a Rev 2. This is fine for the most part, but
  *	we'll properly detect the Compute Module later and adjust accordingly.
+ *	And the next rev of the CN is 0014 ...
  *
  *********************************************************************************
  */
@@ -655,6 +665,33 @@ int piBoardRev (void)
 
   if ((cpuFd = fopen ("/proc/cpuinfo", "r")) == NULL)
     piBoardRevOops ("Unable to open /proc/cpuinfo") ;
+
+// Start by looking for the Architecture, then we can look for a B2 revision....
+
+  while (fgets (line, 120, cpuFd) != NULL)
+    if (strncmp (line, "Hardware", 8) == 0)
+      break ;
+
+  if (strncmp (line, "Hardware", 8) != 0)
+    piBoardRevOops ("No \"Hardware\" line") ;
+
+  if (wiringPiDebug)
+    printf ("piboardRev: Hardware: %s\n", line) ;
+
+// See if it's BCM2708 or BCM2709
+
+  if (strstr (line, "BCM2709") != NULL)
+    piModel2 = TRUE ;
+  else if (strstr (line, "BCM2708") == NULL)
+  {
+    fprintf (stderr, "Unable to determine hardware version. I see: %s,\n", line) ;
+    fprintf (stderr, " - expecting BCM2708 or BCM2709. Please report this to projects@drogon.net\n") ;
+    exit (EXIT_FAILURE) ;
+  }
+
+// Now do the rest of it as before
+
+  rewind (cpuFd) ;
 
   while (fgets (line, 120, cpuFd) != NULL)
     if (strncmp (line, "Revision", 8) == 0)
@@ -706,7 +743,7 @@ int piBoardRev (void)
   if ( (strcmp (c, "0002") == 0) || (strcmp (c, "0003") == 0))
     boardRev = 1 ;
   else
-    boardRev = 2 ;
+    boardRev = 2 ;	// Covers everything else from the B revision 2 to the B+, the Pi v2 and CM's.
 
   if (wiringPiDebug)
     printf ("piBoardRev: Returning revision: %d\n", boardRev) ;
@@ -721,6 +758,15 @@ int piBoardRev (void)
  *	as much details as we can.
  *	This is undocumented and really only intended for the GPIO command.
  *	Use at your own risk!
+ *
+ * for Pi v2:
+ *   [USER:8] [NEW:1] [MEMSIZE:3] [MANUFACTURER:4] [PROCESSOR:4] [TYPE:8] [REV:4]
+ *   NEW          23: will be 1 for the new scheme, 0 for the old scheme
+ *   MEMSIZE      20: 0=256M 1=512M 2=1G
+ *   MANUFACTURER 16: 0=SONY 1=EGOMAN 2=EMBEST
+ *   PROCESSOR    12: 0=2835 1=2836
+ *   TYPE         04: 0=MODELA 1=MODELB 2=MODELA+ 3=MODELB+ 4=Pi2 MODEL B 5=ALPHA 6=CM
+ *   REV          00: 0=REV0 1=REV1 2=REV2
  *********************************************************************************
  */
 
@@ -729,6 +775,9 @@ void piBoardId (int *model, int *rev, int *mem, int *maker, int *overVolted)
   FILE *cpuFd ;
   char line [120] ;
   char *c ;
+
+//	Will deal with the properly later on - for now, lets just get it going...
+//  unsigned int modelNum ;
 
   (void)piBoardRev () ;	// Call this first to make sure all's OK. Don't care about the result.
 
@@ -752,42 +801,67 @@ void piBoardId (int *model, int *rev, int *mem, int *maker, int *overVolted)
   if (wiringPiDebug)
     printf ("piboardId: Revision string: %s\n", line) ;
 
+  if (piModel2)
+  {
+
+// Scan to the colon
+
+    for (c = line ; *c ; ++c)
+      if (*c == ':')
+	break ;
+
+    if (*c != ':')
+      piBoardRevOops ("Bogus \"Revision\" line (no colon)") ;
+
+//    modelNum = (unsigned int)strtol (++c, NULL, 16) ; // Hex number with no leading 0x
+    
+    *model = PI_MODEL_2  ;
+    *rev   = PI_VERSION_1_1 ;
+    *mem   = 1024 ;
+    *maker = PI_MAKER_SONY   ;
+  }
+  else
+  {
+
 // Scan to first digit
 
-  for (c = line ; *c ; ++c)
-    if (isdigit (*c))
-      break ;
+    for (c = line ; *c ; ++c)
+      if (isdigit (*c))
+	break ;
 
 // Make sure its long enough
 
-  if (strlen (c) < 4)
-    piBoardRevOops ("Bogus \"Revision\" line") ;
+    if (strlen (c) < 4)
+      piBoardRevOops ("Bogus \"Revision\" line (not long enough)") ;
 
 // If longer than 4, we'll assume it's been overvolted
 
-  *overVolted = strlen (c) > 4 ;
+    *overVolted = strlen (c) > 4 ;
   
 // Extract last 4 characters:
 
-  c = c + strlen (c) - 4 ;
+    c = c + strlen (c) - 4 ;
 
 // Fill out the replys as appropriate
 
-  /**/ if (strcmp (c, "0002") == 0) { *model = PI_MODEL_B  ; *rev = PI_VERSION_1   ; *mem = 256 ; *maker = PI_MAKER_EGOMAN ; }
-  else if (strcmp (c, "0003") == 0) { *model = PI_MODEL_B  ; *rev = PI_VERSION_1_1 ; *mem = 256 ; *maker = PI_MAKER_EGOMAN ; }
-  else if (strcmp (c, "0004") == 0) { *model = PI_MODEL_B  ; *rev = PI_VERSION_2   ; *mem = 256 ; *maker = PI_MAKER_SONY   ; }
-  else if (strcmp (c, "0005") == 0) { *model = PI_MODEL_B  ; *rev = PI_VERSION_2   ; *mem = 256 ; *maker = PI_MAKER_QISDA  ; }
-  else if (strcmp (c, "0006") == 0) { *model = PI_MODEL_B  ; *rev = PI_VERSION_2   ; *mem = 256 ; *maker = PI_MAKER_EGOMAN ; }
-  else if (strcmp (c, "0007") == 0) { *model = PI_MODEL_A  ; *rev = PI_VERSION_2   ; *mem = 256 ; *maker = PI_MAKER_EGOMAN ; }
-  else if (strcmp (c, "0008") == 0) { *model = PI_MODEL_A  ; *rev = PI_VERSION_2   ; *mem = 256 ; *maker = PI_MAKER_SONY ; ; }
-  else if (strcmp (c, "0009") == 0) { *model = PI_MODEL_B  ; *rev = PI_VERSION_2   ; *mem = 256 ; *maker = PI_MAKER_QISDA  ; }
-  else if (strcmp (c, "000d") == 0) { *model = PI_MODEL_B  ; *rev = PI_VERSION_2   ; *mem = 512 ; *maker = PI_MAKER_EGOMAN ; }
-  else if (strcmp (c, "000e") == 0) { *model = PI_MODEL_B  ; *rev = PI_VERSION_2   ; *mem = 512 ; *maker = PI_MAKER_SONY   ; }
-  else if (strcmp (c, "000f") == 0) { *model = PI_MODEL_B  ; *rev = PI_VERSION_2   ; *mem = 512 ; *maker = PI_MAKER_EGOMAN ; }
-  else if (strcmp (c, "0010") == 0) { *model = PI_MODEL_BP ; *rev = PI_VERSION_1_2 ; *mem = 512 ; *maker = PI_MAKER_SONY   ; }
-  else if (strcmp (c, "0011") == 0) { *model = PI_MODEL_CM ; *rev = PI_VERSION_1_2 ; *mem = 512 ; *maker = PI_MAKER_SONY   ; }
-  else if (strcmp (c, "0012") == 0) { *model = PI_MODEL_AP ; *rev = PI_VERSION_1_2 ; *mem = 256 ; *maker = PI_MAKER_SONY   ; }
-  else                              { *model = 0           ; *rev = 0              ; *mem =   0 ; *maker = 0 ;               }
+    /**/ if (strcmp (c, "0002") == 0) { *model = PI_MODEL_B  ; *rev = PI_VERSION_1   ; *mem = 256 ; *maker = PI_MAKER_EGOMAN ; }
+    else if (strcmp (c, "0003") == 0) { *model = PI_MODEL_B  ; *rev = PI_VERSION_1_1 ; *mem = 256 ; *maker = PI_MAKER_EGOMAN ; }
+    else if (strcmp (c, "0004") == 0) { *model = PI_MODEL_B  ; *rev = PI_VERSION_2   ; *mem = 256 ; *maker = PI_MAKER_SONY   ; }
+    else if (strcmp (c, "0005") == 0) { *model = PI_MODEL_B  ; *rev = PI_VERSION_2   ; *mem = 256 ; *maker = PI_MAKER_QISDA  ; }
+    else if (strcmp (c, "0006") == 0) { *model = PI_MODEL_B  ; *rev = PI_VERSION_2   ; *mem = 256 ; *maker = PI_MAKER_EGOMAN ; }
+    else if (strcmp (c, "0007") == 0) { *model = PI_MODEL_A  ; *rev = PI_VERSION_2   ; *mem = 256 ; *maker = PI_MAKER_EGOMAN ; }
+    else if (strcmp (c, "0008") == 0) { *model = PI_MODEL_A  ; *rev = PI_VERSION_2   ; *mem = 256 ; *maker = PI_MAKER_SONY ; ; }
+    else if (strcmp (c, "0009") == 0) { *model = PI_MODEL_B  ; *rev = PI_VERSION_2   ; *mem = 256 ; *maker = PI_MAKER_QISDA  ; }
+    else if (strcmp (c, "000d") == 0) { *model = PI_MODEL_B  ; *rev = PI_VERSION_2   ; *mem = 512 ; *maker = PI_MAKER_EGOMAN ; }
+    else if (strcmp (c, "000e") == 0) { *model = PI_MODEL_B  ; *rev = PI_VERSION_2   ; *mem = 512 ; *maker = PI_MAKER_SONY   ; }
+    else if (strcmp (c, "000f") == 0) { *model = PI_MODEL_B  ; *rev = PI_VERSION_2   ; *mem = 512 ; *maker = PI_MAKER_EGOMAN ; }
+    else if (strcmp (c, "0010") == 0) { *model = PI_MODEL_BP ; *rev = PI_VERSION_1_2 ; *mem = 512 ; *maker = PI_MAKER_SONY   ; }
+    else if (strcmp (c, "0011") == 0) { *model = PI_MODEL_CM ; *rev = PI_VERSION_1_2 ; *mem = 512 ; *maker = PI_MAKER_SONY   ; }
+    else if (strcmp (c, "0012") == 0) { *model = PI_MODEL_AP ; *rev = PI_VERSION_1_2 ; *mem = 256 ; *maker = PI_MAKER_SONY   ; }
+    else if (strcmp (c, "0013") == 0) { *model = PI_MODEL_BP ; *rev = PI_VERSION_1_2 ; *mem = 512 ; *maker = PI_MAKER_MBEST  ; }
+    else if (strcmp (c, "0014") == 0) { *model = PI_MODEL_CM ; *rev = PI_VERSION_1_2 ; *mem = 512 ; *maker = PI_MAKER_SONY   ; }
+    else                              { *model = 0           ; *rev = 0              ; *mem =   0 ; *maker = 0 ;               }
+  }
 }
  
 
@@ -1768,8 +1842,10 @@ int wiringPiSetup (void)
      pinToGpio =  pinToGpioR1 ;
     physToGpio = physToGpioR1 ;
   }
-  else 				// A, B, Rev 2, B+, CM
+  else 				// A, B, Rev 2, B+, CM, Pi2
   {
+    if (piModel2)
+      BCM2708_PERI_BASE = 0x3F000000 ;
      pinToGpio =  pinToGpioR2 ;
     physToGpio = physToGpioR2 ;
   }

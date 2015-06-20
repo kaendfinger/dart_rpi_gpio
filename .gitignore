@@ -3,4 +3,5 @@
 .settings
 packages
 pubspec.lock
-
+*.so*
+*.o
