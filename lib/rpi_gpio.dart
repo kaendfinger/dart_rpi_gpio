@@ -40,9 +40,17 @@ const List<String> _pinDescriptions = const [
 ];
 
 /// Return [true] if this is running on a Raspberry Pi.
-bool get isRaspberryPi =>
-    //TODO need a better test for Raspberry Pi
-    Platform.isLinux && raspberryPiMarkerFile.existsSync();
+bool get isRaspberryPi {
+  if (!Platform.isLinux) return false;
+  try {
+    if (new File('/etc/os-release').readAsLinesSync().contains('ID=raspbian')) {
+      return true;
+    }
+  } on FileSystemException catch (_) {
+    // fall through
+  }
+  return raspberryPiMarkerFile.existsSync();
+}
 
 /// Return a marker file used to determine if the code is executing on the RPi.
 File get raspberryPiMarkerFile =>
@@ -104,16 +112,27 @@ class Gpio {
     return pin;
   }
 
-  /// An event indicating the given pin's state has changed.
+  /// If all pin event streams have been canceled/closed
+  /// then call the underlying disableAllInterrupts method
+  /// to stop forwarding interrupts.
+  void _checkDisableAllInterrupts() {
+    for (int pinNum = 0; pinNum < _pins.length; ++pinNum) {
+      if (_pins[pinNum]._events != null) {
+        return;
+      }
+    }
+    _hardware.disableAllInterrupts();
+    _interruptEventPort.close();
+    _interruptEventPort = null;
+  }
+
+  /// Called when a pin's state has changed.
   void _handleInterrupt(message) {
     if (message is int) {
-      int value = message >= 0x80 ? 1 : 0;
-      int pinNum = message & 0x7F;
+      int pinNum = message & GpioHardware.pinNumMask;
       if (0 <= pinNum && pinNum < _pins.length) {
-        var pin = _pins[pinNum];
-        if (pin._events != null) {
-          pin._events.add(new PinEvent(pin, value));
-        }
+        int value = (message & GpioHardware.pinValueMask) != 0 ? 1 : 0;
+        _pins[pinNum]._handleInterrupt(value);
       }
     }
   }
@@ -154,6 +173,8 @@ class GpioException {
 
 /// API used by [Gpio] for accessing the underlying hardware.
 abstract class GpioHardware {
+  static final pinNumMask = 0x7F;
+  static final pinValueMask = 0x80;
 
   /// Return the value for the given pin.
   /// 0 = low or ground, 1 = high or positive.
@@ -165,6 +186,9 @@ abstract class GpioHardware {
   /// The [pinMode] should be set to [output] before calling this method.
   void digitalWrite(int pinNum, int value);
 
+  /// Disable the background interrupt listener.
+  void disableAllInterrupts();
+
   /// Enable interrupts for the given pin.
   /// Throws an exception if [initInterrupts] has not been called
   /// or if there cannot be any more active interrupts.
@@ -174,6 +198,14 @@ abstract class GpioHardware {
 
   /// Initialize the background interrupt listener.
   /// Once called, interrupt events will be sent to [port].
+  /// Each message is an int indicating the pin on which the interrupt occurred
+  /// and the value of that pin at the time of the interrupt:
+  ///
+  ///     int message = pinNum | (pinValue != 0 ? GpioHardware.pinValueMask : 0);
+  ///
+  ///     int pinNum = message & GpioHardware.pinNumMask;
+  ///     int pinValue = (message & GpioHardware.pinValueMask) != 0 ? 1 : 0;
+  ///
   /// Throws an exception if interrupts have already been initialized.
   void initInterrupts(SendPort port);
 
@@ -209,6 +241,10 @@ class Pin {
   /// The event stream controller or null if none.
   StreamController<PinEvent> _events;
 
+  /// The pin's value at the time of the last interrupt.
+  /// This is used to filter duplicate interrupts.
+  int _lastInterruptValue;
+
   Pin._(this.pinNum, PinMode mode) {
     this.mode = mode;
   }
@@ -228,9 +264,11 @@ class Pin {
         }
         Gpio._instance._initInterrupts();
         Gpio._hardware.enableInterrupt(pinNum);
+        _lastInterruptValue = value;
       }, onCancel: () {
         _events.close();
         _events = null;
+        Gpio._instance._checkDisableAllInterrupts();
       });
     }
     return _events.stream;
@@ -296,6 +334,15 @@ class Pin {
 
   @override
   String toString() => '$description $mode';
+
+  /// Called when this pin's state has changed.
+  /// Forward the event to listeners after filtering duplicate interrupts.
+  void _handleInterrupt(int newValue) {
+    if (_events != null && _lastInterruptValue != newValue) {
+      _lastInterruptValue = newValue;
+      _events.add(new PinEvent(this, newValue));
+    }
+  }
 }
 
 /// An event indicating that a pin has changed state.
@@ -308,6 +355,9 @@ class PinEvent {
   final int value;
 
   PinEvent(this.pin, this.value);
+
+  @override
+  toString() => '$pin value: $value';
 }
 
 /// A pin can be set to receive [input] and interrupts, have a particular

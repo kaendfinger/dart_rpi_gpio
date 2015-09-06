@@ -1,11 +1,12 @@
 name: rpi_gpio
-version: 0.2.0-alpha.0
+version: 0.2.2-dev.2
 author: Dan Rubel <danrubel@google.com>
 description: rpi_gpio is a Dart library for accessing the Raspberry Pi GPIO pins.
-homepage: https://github.com/danrubel/dart_rpi_gpio
+homepage: https://github.com/danrubel/rpi_gpio.dart
 environment:
   sdk: '>=1.0.0 <2.0.0'
 dependencies:
   path: '>=1.0.0 <2.0.0'
 dev_dependencies:
-  unittest: '>=0.11.4 <0.12.0'
+  grinder: '>=0.7.0 <0.8.0'
+  test: '>=0.12.0 <0.13.0'

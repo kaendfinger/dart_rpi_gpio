@@ -4,7 +4,9 @@ import 'dart:isolate';
 
 import 'package:rpi_gpio/rpi_gpio.dart';
 
-/// Mock hardware used by rpi_gpio_test.dart for testing the [Gpio] library
+import 'test_util.dart';
+
+/// Mock hardware used for testing the [Gpio] library
 /// on platforms other than the Raspberry Pi. This simulates
 /// pin 4 unconnected but with an internal pull up/down resistor setting
 /// pin 3 = an LED (1 = on, 0 = off)
@@ -21,8 +23,6 @@ class MockHardware implements GpioHardware {
     reset();
   }
 
-  DateTime get now => new DateTime.now();
-
   @override
   int digitalRead(int pinNum) {
     if (0 <= pinNum && pinNum <= 4) return values[pinNum];
@@ -36,7 +36,8 @@ class MockHardware implements GpioHardware {
       if (values[pinNum] != digitalValue) {
         values[pinNum] = digitalValue;
         if (interruptMap[pinNum]) {
-          interruptEventPort.send(pinNum | (digitalValue * 0x80));
+          interruptEventPort.send(
+              pinNum | (digitalValue != 0 ? GpioHardware.pinValueMask : 0));
         }
       }
     }
@@ -56,6 +57,12 @@ class MockHardware implements GpioHardware {
       default:
         throw 'write not mocked for pin $pinNum';
     }
+  }
+
+  @override
+  void disableAllInterrupts() {
+    interruptEventPort = null;
+    interruptMap = <bool>[false, false, false, false, false];
   }
 
   @override
@@ -101,8 +108,7 @@ class MockHardware implements GpioHardware {
   void reset() {
     values = <int>[0, 0, 0, 0, null];
     stateChanges = new List<StateChange>();
-    interruptEventPort = null;
-    interruptMap = <bool>[false, false, false, false, false];
+    disableAllInterrupts();
   }
 }
 
