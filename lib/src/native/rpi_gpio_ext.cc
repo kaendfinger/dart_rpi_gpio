@@ -134,7 +134,7 @@ void doEdge (int gpio_pin_num, int edge)
 // Native Extensions for the Standalone Dart VM
 // https://www.dartlang.org/articles/native-extensions-for-standalone-dart-vm/#appendix-compiling-and-linking-extensions
 // and the example code
-// http://dart.googlecode.com/svn/trunk/dart/samples/sample_extension/ 
+// http://dart.googlecode.com/svn/trunk/dart/samples/sample_extension/
 
 // ===== Native methods ===============================================
 // Each native method must have an entry in either function_list or no_scope_function_list
@@ -176,6 +176,38 @@ void digitalWrite(Dart_NativeArguments arguments) {
   Dart_ExitScope();
 }
 
+// SoftTone Create
+void softToneCreate(Dart_NativeArguments arguments) {
+  Dart_EnterScope();
+  Dart_Handle pin_obj = HandleError(Dart_GetNativeArgument(arguments, 1));
+  int64_t pin_num;
+  HandleError(Dart_IntegerToInt64(pin_obj, &pin_num));
+  softToneCreate(pin_num);
+  Dart_ExitScope();
+}
+
+// SoftTone Stop
+void softToneStop(Dart_NativeArguments arguments) {
+  Dart_EnterScope();
+  Dart_Handle pin_obj = HandleError(Dart_GetNativeArgument(arguments, 1));
+  int64_t pin_num;
+  HandleError(Dart_IntegerToInt64(pin_obj, &pin_num));
+  softToneStop(pin_num);
+  Dart_ExitScope();
+}
+
+// SoftTone Write
+void softToneWrite(Dart_NativeArguments arguments) {
+  Dart_EnterScope();
+  Dart_Handle pin_obj = HandleError(Dart_GetNativeArgument(arguments, 1));
+  Dart_Handle freq_obj = HandleError(Dart_GetNativeArgument(arguments, 2));
+  int64_t pin_num, freq;
+  HandleError(Dart_IntegerToInt64(pin_obj, &pin_num));
+  HandleError(Dart_IntegerToInt64(freq_obj, &freq));
+  softToneWrite(pin_num, freq);
+  Dart_ExitScope();
+}
+
 // Set the state of a pin to accept an input voltage or produce an output voltage
 // void _pinMode(int pin, int mode) native "pinMode";
 void pinMode(Dart_NativeArguments arguments) {
@@ -204,7 +236,7 @@ void pullUpDnControl (Dart_NativeArguments arguments) {
 }
 
 // Writes the value to the PWM register for the given pin.
-// The Raspberry Pi has one on-board PWM pin, pin 1 (BMC_GPIO 18, Phys 12), 
+// The Raspberry Pi has one on-board PWM pin, pin 1 (BMC_GPIO 18, Phys 12),
 // and the range is 0-1024.
 void pwmWrite(Dart_NativeArguments arguments) {
   Dart_EnterScope();
@@ -357,6 +389,9 @@ FunctionLookup function_list[] = {
   {"pinMode", pinMode},
   {"pullUpDnControl", pullUpDnControl},
   {"pwmWrite", pwmWrite},
+  {"softToneCreate", softToneCreate},
+  {"softToneWrite", softToneWrite},
+  {"softToneStop", softToneStop},
   {NULL, NULL}
 };
 

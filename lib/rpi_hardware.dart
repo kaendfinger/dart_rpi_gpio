@@ -36,4 +36,8 @@ class RpiHardware implements GpioHardware {
 
   @override
   void pwmWrite(int pinNum, int pulseWidth) native "pwmWrite";
+
+  void softToneWrite(int pinNum, int frequency) native "softToneWrite";
+  void softToneCreate(int pinNum) native "softToneCreate";
+  void softToneStop(int pinNum) native "softToneStop";
 }
