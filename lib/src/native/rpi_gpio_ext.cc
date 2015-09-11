@@ -7,6 +7,7 @@
 #include "include/dart_api.h"
 #include "include/dart_native_api.h"
 #include "wiringPi/wiringPi.h"
+#include "wiringPi/softTone.h"
 
 Dart_Handle HandleError(Dart_Handle handle) {
   if (Dart_IsError(handle)) {
