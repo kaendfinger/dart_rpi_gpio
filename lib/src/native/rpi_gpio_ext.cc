@@ -183,7 +183,9 @@ void softToneCreate(Dart_NativeArguments arguments) {
   Dart_Handle pin_obj = HandleError(Dart_GetNativeArgument(arguments, 1));
   int64_t pin_num;
   HandleError(Dart_IntegerToInt64(pin_obj, &pin_num));
-  softToneCreate(pin_num);
+  int value = softToneCreate(pin_num);
+  Dart_Handle result = HandleError(Dart_NewInteger(value));
+  Dart_SetReturnValue(arguments, result);
   Dart_ExitScope();
 }
 

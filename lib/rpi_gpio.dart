@@ -209,6 +209,13 @@ abstract class GpioHardware {
   /// Throws an exception if interrupts have already been initialized.
   void initInterrupts(SendPort port);
 
+  int softToneCreate(int pin) {
+    return 1;
+  }
+
+  void softToneWrite(int pin, int freq) {}
+  void softToneStop(int pin) {}
+
   /// Set the given pin to the specified mode,
   /// which can be any of [PinMode] (e.g. [PinMode.input.index]).
   void pinMode(int pinNum, int mode);
@@ -318,6 +325,33 @@ class Pin {
       Gpio._instance._softPwm.pulseWidth(pinNum, pulseWidth);
     }
   }
+
+  void startSoftTone() {
+    if (_isSoftTone) {
+      return;
+    }
+
+    var result = Gpio._hardware.softToneCreate(pinNum);
+    if (result != 0) {
+      throw new Exception("Failed to start soft tone for pin ${pinNum}.");
+    }
+    _isSoftTone = true;
+  }
+
+  void stopSoftTone() {
+    Gpio._hardware.softToneStop(pinNum);
+    _isSoftTone = false;
+  }
+
+  void writeSoftTone(int freq) {
+    if (!isSoftToneMode) {
+      startSoftTone();
+    }
+    Gpio._hardware.softToneWrite(pinNum, freq);
+  }
+
+  bool get isSoftToneMode => _isSoftTone;
+  bool _isSoftTone = false;
 
   /// Return the digital value (0 = low, 1 = high) for this pin.
   int get value {
