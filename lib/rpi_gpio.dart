@@ -117,7 +117,7 @@ class Gpio {
   /// to stop forwarding interrupts.
   void _checkDisableAllInterrupts() {
     for (int pinNum = 0; pinNum < _pins.length; ++pinNum) {
-      if (_pins[pinNum]._events != null) {
+      if (_pins[pinNum] != null && _pins[pinNum]._events != null) {
         return;
       }
     }
