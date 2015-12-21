@@ -143,10 +143,10 @@ void doEdge (int gpio_pin_num, int edge)
 // Initialize the native library.
 // This is called once by the rpi_gpio_ext_Init method in the Infrastructure section below.
 Dart_Handle rpi_gpio_wiringPi_init() {
-  int result = wiringPiSetup();
+  int result = wiringPiSetupSys();
   if (result != 0) {
-    // Apparently wiringPiSetup never returns if there is an initialization problem
-    return Dart_NewApiError("wiringPiSetup failed");
+    // Apparently wiringPiSetupSys never returns if there is an initialization problem
+    return Dart_NewApiError("wiringPiSetupSys failed");
   }
   return Dart_Null();
 }
