@@ -53,7 +53,7 @@ check_make_ok
 
 echo building rpi_gpio
 cd $(dirname $0)
-g++ -fPIC -I$DARTSDK/ -c rpi_gpio_ext.cc
+g++ -fPIC -I$DARTSDK/include -c rpi_gpio_ext.cc
 LIBS=$(ls -dm wiringPi/*.o | tr -d ' ' | tr -d '\n')
 # use --no-undefined to check for missing libraries
 gcc -shared -lpthread -Wl,$LIBS,-soname,librpi_gpio_ext.so -o librpi_gpio_ext.so rpi_gpio_ext.o

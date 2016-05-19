@@ -8,3 +8,12 @@ packages
 pubspec.lock
 *.so*
 *.o
+build/
+work/
+CMakeCache.txt
+CMakeFiles
+CMakeScripts
+cmake_install.cmake
+install_manifest.txt
+CTestTestfile.cmake
+/Makefile
