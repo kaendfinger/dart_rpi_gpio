@@ -110,6 +110,46 @@ class MockHardware implements GpioHardware {
     stateChanges = new List<StateChange>();
     disableAllInterrupts();
   }
+
+  @override
+  int softToneCreate(int pin) {
+    return 0;
+  }
+
+  @override
+  void softToneStop(int pin) {
+  }
+
+  @override
+  void softToneWrite(int pin, int freq) {
+  }
+
+  @override
+  int analogRead(int pin) {
+    return null;
+  }
+
+  @override
+  void analogWrite(int pin, int value) {
+  }
+
+  @override
+  int digitalReadByte() {
+    return null;
+  }
+
+  @override
+  int digitalReadByte2() {
+    return null;
+  }
+
+  @override
+  void digitalWriteByte(int value) {
+  }
+
+  @override
+  void digitalWriteByte2(int value) {
+  }
 }
 
 class StateChange {

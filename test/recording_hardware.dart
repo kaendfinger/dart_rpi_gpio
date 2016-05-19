@@ -138,6 +138,46 @@ class RecordingHardware implements GpioHardware {
     }
     return null;
   }
+
+  @override
+  int softToneCreate(int pin) {
+    return null;
+  }
+
+  @override
+  void softToneStop(int pin) {
+  }
+
+  @override
+  void softToneWrite(int pin, int freq) {
+  }
+
+  @override
+  int analogRead(int pin) {
+    return null;
+  }
+
+  @override
+  void analogWrite(int pin, int value) {
+  }
+
+  @override
+  int digitalReadByte() {
+    return null;
+  }
+
+  @override
+  int digitalReadByte2() {
+    return null;
+  }
+
+  @override
+  void digitalWriteByte(int value) {
+  }
+
+  @override
+  void digitalWriteByte2(int value) {
+  }
 }
 
 /// Internal class for tracking the state of a pin

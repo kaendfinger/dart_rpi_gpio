@@ -76,6 +76,8 @@ class Gpio {
     _hardware = hardware;
   }
 
+  static GpioHardware get hardware => _hardware;
+
   /// The instance for accessing Raspberry Pi GPIO functionality.
   static Gpio get instance {
     /// Return the single [Gpio] instance.
@@ -215,6 +217,15 @@ abstract class GpioHardware {
 
   void softToneWrite(int pin, int freq) {}
   void softToneStop(int pin) {}
+
+  int digitalReadByte() => null;
+  int digitalReadByte2() => null;
+
+  void digitalWriteByte(int value) {}
+  void digitalWriteByte2(int value) {}
+
+  int analogRead(int pin) => null;
+  void analogWrite(int pin, int value) {}
 
   /// Set the given pin to the specified mode,
   /// which can be any of [PinMode] (e.g. [PinMode.input.index]).

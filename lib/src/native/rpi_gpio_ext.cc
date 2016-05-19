@@ -164,6 +164,39 @@ void digitalRead(Dart_NativeArguments arguments) {
   Dart_ExitScope();
 }
 
+// Read the byte from the digital byte pins.
+// int _digitalReadByte() native "digitalReadByte";
+void digitalReadByte(Dart_NativeArguments arguments) {
+  Dart_EnterScope();
+  int value = digitalReadByte();
+  Dart_Handle result = HandleError(Dart_NewInteger(value));
+  Dart_SetReturnValue(arguments, result);
+  Dart_ExitScope();
+}
+
+// Read the byte from the second digital byte pins.
+// int _digitalReadByte2() native "digitalReadByte2";
+void digitalReadByte2(Dart_NativeArguments arguments) {
+  Dart_EnterScope();
+  int value = digitalReadByte2();
+  Dart_Handle result = HandleError(Dart_NewInteger(value));
+  Dart_SetReturnValue(arguments, result);
+  Dart_ExitScope();
+}
+
+// Read the analog value of a given pin.
+// int _analogRead(int pin) native "analogRead";
+void analogRead(Dart_NativeArguments arguments) {
+  Dart_EnterScope();
+  Dart_Handle pin_obj = HandleError(Dart_GetNativeArgument(arguments, 1));
+  int64_t pin_num;
+  HandleError(Dart_IntegerToInt64(pin_obj, &pin_num));
+  int value = analogRead(pin_num);
+  Dart_Handle result = HandleError(Dart_NewInteger(value));
+  Dart_SetReturnValue(arguments, result);
+  Dart_ExitScope();
+}
+
 // Set the output voltage on a GPIO pin either high (1) or low (0).
 // void _digitalWrite(int pin, int value) native "digitalWrite";
 void digitalWrite(Dart_NativeArguments arguments) {
@@ -174,6 +207,43 @@ void digitalWrite(Dart_NativeArguments arguments) {
   HandleError(Dart_IntegerToInt64(pin_obj, &pin_num));
   HandleError(Dart_IntegerToInt64(value_obj, &value));
   digitalWrite(pin_num, value);
+  Dart_ExitScope();
+}
+
+// Write the analog value to the given pin.
+// void _analogWrite(int value) native "analogWrite";
+void analogWrite(Dart_NativeArguments arguments) {
+  Dart_EnterScope();
+  Dart_Handle pin_obj = HandleError(Dart_GetNativeArgument(arguments, 1));
+  Dart_Handle value_obj = HandleError(Dart_GetNativeArgument(arguments, 2));
+  int64_t pin_num, value;
+  HandleError(Dart_IntegerToInt64(pin_obj, &pin_num));
+  HandleError(Dart_IntegerToInt64(value_obj, &value));
+  analogWrite(pin_num, value);
+  Dart_ExitScope();
+}
+
+// This writes the 8-bit byte supplied to the first 8 GPIO pins. It’s the fastest way to set all 8
+// bits at once to a particular value, although it still takes two write operations to the Pi’s GPIO hardware.
+// void _digitalWriteByte(int value) native "digitalWriteByte";
+void digitalWriteByte(Dart_NativeArguments arguments) {
+  Dart_EnterScope();
+  Dart_Handle value_obj = HandleError(Dart_GetNativeArgument(arguments, 1));
+  int64_t value;
+  HandleError(Dart_IntegerToInt64(value_obj, &value));
+  digitalWriteByte(value);
+  Dart_ExitScope();
+}
+
+// This writes the 8-bit byte supplied to the second set of 8 GPIO pins. It’s the fastest way to set all 8
+// bits at once to a particular value, although it still takes two write operations to the Pi’s GPIO hardware.
+// void _digitalWriteByte2(int value) native "digitalWriteByte2";
+void digitalWriteByte2(Dart_NativeArguments arguments) {
+  Dart_EnterScope();
+  Dart_Handle value_obj = HandleError(Dart_GetNativeArgument(arguments, 1));
+  int64_t value;
+  HandleError(Dart_IntegerToInt64(value_obj, &value));
+  digitalWriteByte2(value);
   Dart_ExitScope();
 }
 
@@ -385,7 +455,13 @@ struct FunctionLookup {
 
 FunctionLookup function_list[] = {
   {"digitalRead", digitalRead},
+  {"digitalReadByte", digitalReadByte},
+  {"digitalReadByte2", digitalReadByte2},
+  {"analogRead", analogRead},
   {"digitalWrite", digitalWrite},
+  {"digitalWriteByte", digitalWriteByte},
+  {"digitalWriteByte2", digitalWriteByte2},
+  {"analogWrite", analogWrite},
   {"disableAllInterrupts", disableAllInterrupts},
   {"enableInterrupt", enableInterrupt},
   {"initInterrupts", initInterrupts},

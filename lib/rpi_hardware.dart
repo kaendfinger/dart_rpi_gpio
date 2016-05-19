@@ -19,6 +19,15 @@ class RpiHardware implements GpioHardware {
   @override
   void digitalWrite(int pinNum, int value) native "digitalWrite";
 
+  void digitalWriteByte(int value) native "digitalWriteByte";
+  void digitalWriteByte2(int value) native "digitalWriteByte2";
+
+  int digitalReadByte() native "digitalReadByte";
+  int digitalReadByte2() native "digitalReadByte2";
+
+  int analogRead(int pinNum) native "analogRead";
+  void analogWrite(int pinNum, int value) native "analogWrite";
+
   @override
   void disableAllInterrupts() native "disableAllInterrupts";
 
