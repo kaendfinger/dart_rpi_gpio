@@ -4,6 +4,7 @@
 #include <string.h>
 #include <sys/types.h>
 #include <unistd.h>
+
 #include "include/dart_api.h"
 #include "include/dart_native_api.h"
 #include "wiringPi/wiringPi.h"
@@ -238,7 +239,7 @@ void digitalWriteByte(Dart_NativeArguments arguments) {
 // This writes the 8-bit byte supplied to the second set of 8 GPIO pins. It’s the fastest way to set all 8
 // bits at once to a particular value, although it still takes two write operations to the Pi’s GPIO hardware.
 // void _digitalWriteByte2(int value) native "digitalWriteByte2";
-void digitalWriteByte2(Dart_NativeArguments arguments) {
+void _digitalWriteByte2(Dart_NativeArguments arguments) {
   Dart_EnterScope();
   Dart_Handle value_obj = HandleError(Dart_GetNativeArgument(arguments, 1));
   int64_t value;
@@ -460,7 +461,7 @@ FunctionLookup function_list[] = {
   {"analogRead", analogRead},
   {"digitalWrite", digitalWrite},
   {"digitalWriteByte", digitalWriteByte},
-  {"digitalWriteByte2", digitalWriteByte2},
+  {"digitalWriteByte2", _digitalWriteByte2},
   {"analogWrite", analogWrite},
   {"disableAllInterrupts", disableAllInterrupts},
   {"enableInterrupt", enableInterrupt},
